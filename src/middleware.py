@@ -28,7 +28,7 @@ class Queue:
         self.sel.register(sys.stdin, selectors.EVENT_READ, self.push)
 
         if self.type == MiddlewareType.CONSUMER:
-            submsg = CDProto.subscribe(self.topic)
+            submsg = CDProto.subscribe(self.type, self.topic)
             CDProto.send_msg(self.sock, submsg)
 
 
