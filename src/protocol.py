@@ -103,7 +103,6 @@ class CDProto:
     
     @classmethod
     def send_msg(self, connection: socket, command, _type="", topic="",  message = None):
-        print(command)
         if command == "subscribe":
             msg = self.subscribe(_type, topic)
         elif command == "publish":

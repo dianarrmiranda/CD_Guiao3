@@ -23,10 +23,6 @@ class Queue:
         self.type = _type
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 
-        if self.type == MiddlewareType.CONSUMER:
-            submsg = CDProto.subscribe(self.type, self.topic)
-            CDProto.send_msg(self.sock, submsg)
-
 
     def push(self, value):
         """Sends data to broker."""
@@ -61,6 +57,9 @@ class JSONQueue(Queue):
         super().__init__(topic, _type)
         self.ser_type = "JSONQueue"
 
+        if self.type == MiddlewareType.CONSUMER:
+            CDProto.send_msg(self.sock, "subscribe", self.ser_type, self.topic)
+
     def push(self, value):
         """Sends data to broker."""
         CDProto.send_msg(self.sock, "publish", self.ser_type, self.topic, value)
@@ -93,6 +92,9 @@ class XMLQueue(Queue):
         super().__init__(topic, _type)
         self.ser_type = "XMLQueue"
 
+        if self.type == MiddlewareType.CONSUMER:
+            CDProto.send_msg(self.sock, "subscribe", self.ser_type, self.topic)
+
     def push(self, value):
         """Sends data to broker."""
         CDProto.send_msg(self.sock, "publish", self.ser_type, self.topic, value)
@@ -124,6 +126,9 @@ class PickleQueue(Queue):
     def __init__(self, topic, _type=MiddlewareType.CONSUMER):
         super().__init__(topic, _type)
         self.ser_type = "PickleQueue"
+
+        if self.type == MiddlewareType.CONSUMER:
+            CDProto.send_msg(self.sock, "subscribe", self.ser_type, self.topic)
 
     def push(self, value):
         """Sends data to broker."""
