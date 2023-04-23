@@ -1,11 +1,14 @@
 import json, pickle
 from socket import socket
 import xml.etree.ElementTree as ET
+
+
 class Message:
     """Message Type."""
 
     def __init__(self, command):
         self.command = command
+
 
 class Subscribe(Message):
     """Message to join a chat topic."""
@@ -19,7 +22,8 @@ class Subscribe(Message):
     
     def __str__(self):
         return f'{{"command": "{self.command}", "type": "{self.type.__str__()}", "topic": "{self.topic}"}}'
-        
+
+
 class ListTopics(Message):
     def __init__(self, command, type):
         super().__init__(command)
@@ -42,7 +46,8 @@ class ListTopicsOK(Message):
 
     def __str__(self):
         return f'{{"command": "{self.command}", "type": "{self.type.__str__()}", "topics": "{self.topics}"}}'
-    
+
+
 class Publish(Message):
     """Message to chat with other clients."""
     def __init__(self, command, type, topic, message):
@@ -57,6 +62,7 @@ class Publish(Message):
     def __str__(self):
         return f'{{"command": "{self.command}", "type": "{self.type.__str__()}", "topic": "{self.topic}", "message": "{self.message}"}}'
 
+
 class Unsubscribe(Message):
     def __init__(self, command, type, topic):
         super().__init__(command)
@@ -69,6 +75,7 @@ class Unsubscribe(Message):
     def __str__(self):
         return f'{{"command": "{self.command}", "type": "{self.type.__str__()}", "topic": "{self.topic}"}}'
     
+
 class CDProto:
     """Computação Distribuida Protocol."""
 
@@ -96,6 +103,7 @@ class CDProto:
     
     @classmethod
     def send_msg(self, connection: socket, command, _type="", topic="",  message = None):
+        print(command)
         if command == "subscribe":
             msg = self.subscribe(_type, topic)
         elif command == "publish":
@@ -159,6 +167,7 @@ class CDProto:
 
         except:
             raise CDProtoBadFormat(data)
+
 
 class CDProtoBadFormat(Exception):
     """Exception when source message is not CDProto."""

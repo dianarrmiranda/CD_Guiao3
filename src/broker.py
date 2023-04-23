@@ -3,7 +3,7 @@ import enum
 import json
 from typing import List, Tuple
 import selectors
-import socket
+import socket, sys
 import signal
 from .protocol import CDProto
 
@@ -38,9 +38,9 @@ class Broker:
         self.subscriptions = {}
         self.channels = {}
 
-    def signal_handler(self, sig, frame):
+    def signal_handler(sig, frame):
         print('\nDone!')
-        self.canceled = True
+        sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
     print('Press Ctrl+C to exit...')
