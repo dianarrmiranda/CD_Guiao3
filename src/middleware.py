@@ -30,24 +30,14 @@ class Queue:
 
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
-        msg = CDProto.recv_msg(self.sock)
-        if msg: # pub
-            return msg
-        #elif: # list topcs
-         #   pass
-            # invocar callback
-        #else:
 
     
     def list_topics(self, callback: Callable):
         """Lists all topics available in the broker."""
-        CDProto.send_msg(self.sock, CDProto.list_topics())
-        callback 
         
 
     def cancel(self):
         """Cancel subscription."""
-        CDProto.send_msg(self.sock, CDProto.cancel(self.topic))
 
 
 class JSONQueue(Queue):
