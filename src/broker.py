@@ -45,7 +45,7 @@ class Broker:
     signal.signal(signal.SIGINT, signal_handler)
     print('Press Ctrl+C to exit...')
 
-    def accept(self, sock):
+    def accept(self, sock, mask):
 
         # Aceita a conexão
         conn, addr = sock.accept()
@@ -55,6 +55,7 @@ class Broker:
         header = conn.recv(2)
         header = int.from_bytes(header, byteorder='big')
         data = conn.recv(header).decode('utf-8')
+        
 
         # Verifica qual é o tipo da mensagem através da informação recbida
         serializer_type = json.loads(data)['Serializer']
@@ -69,11 +70,11 @@ class Broker:
 
         if serializer:
             self.channels[conn] = serializer
-            self.selector.register(conn, selectors.EVENT_READ, self.read)
+            self.sel.register(conn, selectors.EVENT_READ, self.read)
         else:
             conn.close()
 
-    def read(self, conn):
+    def read(self, conn, mask):
         
         if conn in self.channels:
             serializer = self.channels[conn]

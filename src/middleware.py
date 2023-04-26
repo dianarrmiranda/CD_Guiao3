@@ -22,6 +22,7 @@ class Queue:
         self.topic = topic
         self.type = _type
         self.sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        self.sock.connect(('localhost',5000))
 
 
     def push(self, value):
