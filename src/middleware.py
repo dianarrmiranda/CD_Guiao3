@@ -58,8 +58,10 @@ class JSONQueue(Queue):
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
         msg = CDProto.recv_msg(self.sock, self.ser_type)
+        print(msg)
         if msg is not None:
-            if msg.command == "publish": 
+            if msg.command == "publish":
+                print(msg) 
                 return msg
             elif msg.command == "listTopics":
                 #invocar callback
@@ -129,12 +131,15 @@ class PickleQueue(Queue):
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
         msg = CDProto.recv_msg(self.sock, self.ser_type)
-        if msg.command == "publish": 
-            return msg
-        elif msg.command == "listTopics":
-            #invocar callback
-            pass
-        #else:
+        print(msg)
+        if msg is not None:
+            if msg.command == "publish":
+                print(msg) 
+                return msg
+            elif msg.command == "listTopics":
+                #invocar callback
+                pass
+            #else:
 
     
     def list_topics(self, callback: Callable):

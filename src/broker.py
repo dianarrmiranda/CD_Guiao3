@@ -51,33 +51,15 @@ class Broker:
         # Aceita a conexão
         conn, addr = sock.accept()
         conn.setblocking(False)
-
-
-        # Lê o header e a informação
-        header = conn.recv(1)
-        header = int.from_bytes(header, byteorder='big')
-        
-
-        # Verifica qual é o tipo da mensagem através da informação recbida
-        if header == Serializer.JSON.value:
-            serializer = Serializer.JSON
-        elif header == Serializer.XML.value:
-            serializer = Serializer.XML
-        elif header == Serializer.PICKLE.value:
-            serializer = Serializer.PICKLE
-        else:
-            serializer = None
-
-        if serializer:
-            self.channels[conn] = serializer
-            self.sel.register(conn, selectors.EVENT_READ, self.read)
-        else:
-            conn.close()
+ 
+        self.sel.register(conn, selectors.EVENT_READ, self.read)
+        self.channels[conn] = None
 
 
     def read(self, conn, mask):
         
         if conn in self.channels:
+            msg = None
             serializer = self.channels[conn]
             if serializer == Serializer.JSON:
                 msg = CDProto.recv_msg(conn, serializer.value)
@@ -91,18 +73,43 @@ class Broker:
                 topic = msg["topic"]
 
                 if command == 'subscribe':
+                    # Lê o header e a informação
+                    header = conn.recv(1)
+                    header = int.from_bytes(header, byteorder='big')
+
+                    # Verifica qual é o tipo da mensagem através da informação recbida
+                    if header == Serializer.JSON.value:
+                        serializer = Serializer.JSON
+                    elif header == Serializer.XML.value:
+                        serializer = Serializer.XML
+                    elif header == Serializer.PICKLE.value:
+                        serializer = Serializer.PICKLE
+                    else:
+                        serializer = None
+
+                    if serializer:
+                        self.channels[conn] = serializer
+                        self.sel.register(conn, selectors.EVENT_READ, self.read)
+                    else:
+                        conn.close()
+
                     self.subscribe(topic, conn, serializer)
+
                 elif command == 'publish':
+
                     message = msg["message"]
                     self.put_topic(topic, message)
+
                     for sub_topic in self.subscriptions.keys():
                         if topic.startswith(sub_topic):
                             for subscriber in self.subscriptions[sub_topic]:
-                                CDProto.send_msg(
-                                    subscriber[0], command, serializer.value, topic, message)
+                                CDProto.send_msg(subscriber[0], command, serializer.value, topic, message)
+
                 elif command == 'listTopics':
+
                     topics = self.list_topics()
                     CDProto.send_msg(conn, command, serializer.value, topic, topics)
+                    
                 elif command == 'unsubscribe':
                     self.unsubscribe(topic, conn)
         else:

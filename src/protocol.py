@@ -112,17 +112,24 @@ class CDProto:
         
         if serializer == 0:
             msg = json.dumps(msg.dict()).encode('utf-8')
-
         elif serializer == 1:
             msg = msg.dict()
             for key in msg:
                 msg[key] = str(msg[key])
             msg = ET.tostring(ET.Element("message", msg))
+        elif serializer == 2:
+            msg = pickle.dumps(msg.dict())
+        else:
+            raise CDProtoBadFormat(msg)
 
         try:
-            header = serializer.to_bytes(1, byteorder="big")
             size = (len(msg)).to_bytes(2, byteorder="big")
-            connection.send(header + size + msg)
+
+            if command == "subscribe":
+                header = serializer.to_bytes(1, byteorder="big")
+                connection.send(header + size + msg)
+            else: 
+                connection.send(size + msg)
         except:
             raise CDProtoBadFormat(msg)
         
