@@ -12,28 +12,26 @@ class Message:
 
 class Subscribe(Message):
     """Message to join a chat topic."""
-    def __init__(self, command, type, topic):
+    def __init__(self, command, topic):
         super().__init__(command)
         self.topic = topic
-        self.type = type
 
     def dict(self):
-        return {"command": self.command, "type": self.type.__str__(), "topic": self.topic}
+        return {"command": self.command, "topic": self.topic}
     
     def __str__(self):
-        return f'{{"command": "{self.command}", "type": "{self.type.__str__()}", "topic": "{self.topic}"}}'
+        return f'{{"command": "{self.command}", "topic": "{self.topic}"}}'
 
 
 class ListTopics(Message):
-    def __init__(self, command, type):
+    def __init__(self, command):
         super().__init__(command)
-        self.type = type
 
     def dict(self):
-        return {"command": self.command, "type": self.type.__str__()}
+        return {"command": self.command}
     
     def __str__(self):
-        return f'{{"command": "{self.command}", "type": "{self.type.__str__()}"}}'
+        return f'{{"command": "{self.command}"}}'
     
 
 class ListTopicsOK(Message):
@@ -42,97 +40,98 @@ class ListTopicsOK(Message):
         self.topics = topics
 
     def dict(self):
-        return {"command": self.command, "type": self.type.__str__(), "topics": self.topics}
+        return {"command": self.command, "topics": self.topics}
 
     def __str__(self):
-        return f'{{"command": "{self.command}", "type": "{self.type.__str__()}", "topics": "{self.topics}"}}'
+        return f'{{"command": "{self.command}", "topics": "{self.topics}"}}'
 
 
 class Publish(Message):
     """Message to chat with other clients."""
-    def __init__(self, command, type, topic, message):
+    def __init__(self, command,  topic, message):
         super().__init__(command)
         self.topic = topic
         self.message = message
-        self.type = type
 
     def dict(self):
-        return {"command": self.command, "type": self.type.__str__(), "topic": self.topic, "message": self.message}
+        return {"command": self.command,  "topic": self.topic, "message": self.message}
     
     def __str__(self):
-        return f'{{"command": "{self.command}", "type": "{self.type.__str__()}", "topic": "{self.topic}", "message": "{self.message}"}}'
+        return f'{{"command": "{self.command}",  "topic": "{self.topic}", "message": "{self.message}"}}'
 
 
 class Unsubscribe(Message):
-    def __init__(self, command, type, topic):
+    def __init__(self, command,  topic):
         super().__init__(command)
         self.topic = topic
         self.type = type
 
     def dict(self):
-        return {"command": self.command, "type": self.type.__str__(), "topic": self.topic}
+        return {"command": self.command, "topic": self.topic}
     
     def __str__(self):
-        return f'{{"command": "{self.command}", "type": "{self.type.__str__()}", "topic": "{self.topic}"}}'
+        return f'{{"command": "{self.command}", "topic": "{self.topic}"}}'
     
 
 class CDProto:
     """Computação Distribuida Protocol."""
 
     @classmethod
-    def subscribe(self, type, topic) -> Subscribe:
+    def subscribe(self, topic) -> Subscribe:
         """Creates a SubscribeMessage object."""
-        return Subscribe("subscribe", type, topic)
+        return Subscribe("subscribe",topic)
 
     @classmethod
-    def publish(self, type, topic, message) -> Publish:
+    def publish(self, topic, message) -> Publish:
         """Creates a PublishMessage object."""
-        return Publish("publish", type, topic, message)
+        return Publish("publish",  topic, message)
     
     @classmethod
-    def listTopics(self, type, list = None) -> ListTopics:
+    def listTopics(self,  list = None) -> ListTopics:
         """Creates a ListTopicsMessage object."""
         if list:
             return ListTopicsOK("listTopics", list)
         return ListTopics("listTopics", type)
 
     @classmethod
-    def unsubscribe(self, type, topic) -> Unsubscribe:
+    def unsubscribe(self,  topic) -> Unsubscribe:
         """Creates a UnsubscribeMessage object."""
-        return Unsubscribe("unsubscribe", type, topic)
+        return Unsubscribe("unsubscribe",  topic)
     
     @classmethod
-    def send_msg(self, connection: socket, command, _type="", topic="",  message = None):
+    def send_msg(self, connection: socket, command, serializer: int, topic="",  message = None):
+        msg = None
         if command == "subscribe":
-            msg = self.subscribe(_type, topic)
+            msg = self.subscribe(topic)
         elif command == "publish":
-            msg = self.publish(_type, topic, message)
+            msg = self.publish(topic, message)
         elif command == "listTopics":
-            msg = self.listTopics(_type, message)
+            msg = self.listTopics(message)
         elif command == "unsubscribe":
-            msg = self.unsubscribe(_type, topic)
+            msg = self.unsubscribe(topic)
         
-        if _type == "JSONQueue" or _type.__str__() == "Serializer.JSON":
+        if serializer == 0:
             msg = json.dumps(msg.dict()).encode('utf-8')
 
-        elif _type == "XMLQueue" or _type.__str__() == "Serializer.XML":
+        elif serializer == 1:
             msg = msg.dict()
             for key in msg:
                 msg[key] = str(msg[key])
             msg = ET.tostring(ET.Element("message", msg))
 
         try:
-            header = (len(msg)).to_bytes(2, byteorder="big")
-            connection.send(header + msg)
+            header = serializer.to_bytes(1, byteorder="big")
+            size = (len(msg)).to_bytes(2, byteorder="big")
+            connection.send(header + size + msg)
         except:
             raise CDProtoBadFormat(msg)
         
     @classmethod
-    def recv_msg(self, connection: socket) -> Message:
+    def recv_msg(self, connection: socket, serializer: int) -> Message:
         """Receives through a connection a Message object."""
         try:
             size = connection.recv(2)
-            size = int.from_bytes(size,byteorder="big")
+            size = int.from_bytes(size, byteorder="big")
 
             if size == 0:
                 return None
@@ -142,27 +141,28 @@ class CDProto:
             data = connection.recv(size)
 
             if data:
-                try:
+                if serializer == 0:
                     msg = data.decode("utf-8")
                     msg = json.loads(msg)
-                except:
-                    try:
-                        msg = pickle.loads(data)
-                    except:
-                        msg = ET.fromstring(data.decode("utf-8"))
-                        msg = msg.attrib
+                elif serializer == 1:
+                    msg = ET.fromstring(data.decode("utf-8"))
+                    msg = msg.attrib
+                elif serializer == 2:
+                    msg = pickle.loads(data)
+                else:
+                    msg = None
 
 
                 if msg["command"] == "subscribe":
-                    return self.subscribe(msg["type"], msg["topic"]).dict()
+                    return self.subscribe(msg["topic"]).dict()
                 elif msg["command"] == "publish":
-                    return self.publish(msg["type"], msg["topic"], msg["message"]).dict()
+                    return self.publish(msg["topic"], msg["message"]).dict()
                 elif msg["command"] == "listTopics":
                     if msg["topics"]:
-                        return self.listTopics(msg["type"], msg["topics"]).dict()
-                    return self.listTopics(msg["type"]).dict()
+                        return self.listTopics(msg["topics"]).dict()
+                    return self.listTopics().dict()
                 elif msg["command"] == "unsubscribe":
-                    return self.unsubscribe(msg["type"], msg["topic"]).dict()
+                    return self.unsubscribe(msg["topic"]).dict()
 
         except:
             raise CDProtoBadFormat(data)

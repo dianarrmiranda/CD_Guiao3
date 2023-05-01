@@ -36,7 +36,7 @@ class Broker:
 
         self.topics = {}
         self.subscriptions = {}
-        self.channels = {}
+        self.channels = {} # conn -> serializer
 
     def signal_handler(sig, frame):
         print('\nDone!')
@@ -45,25 +45,25 @@ class Broker:
     signal.signal(signal.SIGINT, signal_handler)
     print('Press Ctrl+C to exit...')
 
+
     def accept(self, sock, mask):
 
         # Aceita a conexão
         conn, addr = sock.accept()
         conn.setblocking(False)
 
+
         # Lê o header e a informação
-        header = conn.recv(2)
+        header = conn.recv(1)
         header = int.from_bytes(header, byteorder='big')
-        data = conn.recv(header).decode('utf-8')
         
 
         # Verifica qual é o tipo da mensagem através da informação recbida
-        serializer_type = json.loads(data)['Serializer']
-        if serializer_type == 'JSONQueue':
+        if header == Serializer.JSON.value:
             serializer = Serializer.JSON
-        elif serializer_type == 'XMLQueue':
+        elif header == Serializer.XML.value:
             serializer = Serializer.XML
-        elif serializer_type == 'PickleQueue':
+        elif header == Serializer.PICKLE.value:
             serializer = Serializer.PICKLE
         else:
             serializer = None
@@ -74,34 +74,35 @@ class Broker:
         else:
             conn.close()
 
+
     def read(self, conn, mask):
         
         if conn in self.channels:
             serializer = self.channels[conn]
             if serializer == Serializer.JSON:
-                msg = CDProto.recv_msg(conn, type="JSONQueue")
+                msg = CDProto.recv_msg(conn, serializer.value)
             elif serializer == Serializer.XML:
-                msg = CDProto.recv_msg(conn, type="XMLQueue")
+                msg = CDProto.recv_msg(conn, serializer.value)
             elif serializer == Serializer.PICKLE:
-                msg = CDProto.recv_msg(conn, type="PickleQueue")
+                msg = CDProto.recv_msg(conn, serializer.value)
 
             if msg is not None:
                 command = msg["command"]
                 topic = msg["topic"]
-                message = msg["message"]
 
                 if command == 'subscribe':
                     self.subscribe(topic, conn, serializer)
                 elif command == 'publish':
+                    message = msg["message"]
                     self.put_topic(topic, message)
                     for sub_topic in self.subscriptions.keys():
                         if topic.startswith(sub_topic):
                             for subscriber in self.subscriptions[sub_topic]:
                                 CDProto.send_msg(
-                                    subscriber[0], command, serializer, topic, message)
+                                    subscriber[0], command, serializer.value, topic, message)
                 elif command == 'listTopics':
                     topics = self.list_topics()
-                    CDProto.send_msg(conn, command, serializer, topic, topics)
+                    CDProto.send_msg(conn, command, serializer.value, topic, topics)
                 elif command == 'unsubscribe':
                     self.unsubscribe(topic, conn)
         else:
@@ -109,21 +110,26 @@ class Broker:
             self.selector.unregister(conn)
             conn.close()
 
+
     def list_topics(self) -> List[str]:
         """Returns a list of strings containing all topics containing values."""
         return [topic for topic in self.topics.keys() if self.topics[topic]]
+
 
     def get_topic(self, topic):
         """Returns the currently stored value in topic."""
         return self.topics.get(topic)
 
+
     def put_topic(self, topic, value):
         """Store in topic the value."""
         self.topics[topic] = value
 
+
     def list_subscriptions(self, topic: str) -> List[Tuple[socket.socket, Serializer]]:
         """Provide list of subscribers to a given topic."""
         return self.subscriptions.get(topic, [])
+
 
     def subscribe(self, topic: str, address: socket.socket, _format: Serializer = None):
         """Subscribe to topic by client in address."""
@@ -137,13 +143,16 @@ class Broker:
 
         last_msg = self.get_topic(topic)
         if last_msg:
-            CDProto.send_msg(address, "publish", self.channels[address], topic, last_msg)
+            serializer = self.channels[address]
+            CDProto.send_msg(address, "publish", serializer.value, topic, last_msg)
 
+    
     def unsubscribe(self, topic, address):
         """Unsubscribe to topic by client in address."""
         if topic in self.subscriptions:
-            Serializer = self.channels.get(address)
-            self.subscriptions[topic].remove((address, Serializer))
+            serializer = self.channels.get(address)
+            self.subscriptions[topic].remove((address, serializer))
+
 
     def run(self):
         """Run until canceled."""

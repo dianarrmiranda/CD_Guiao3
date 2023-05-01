@@ -46,7 +46,7 @@ class JSONQueue(Queue):
 
     def __init__(self, topic, _type=MiddlewareType.CONSUMER):
         super().__init__(topic, _type)
-        self.ser_type = "JSONQueue"
+        self.ser_type = 0
 
         if self.type == MiddlewareType.CONSUMER:
             CDProto.send_msg(self.sock, "subscribe", self.ser_type, self.topic)
@@ -57,13 +57,14 @@ class JSONQueue(Queue):
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
-        msg = CDProto.recv_msg(self.sock)
-        if msg.command == "publish": 
-            return msg
-        elif msg.command == "listTopics":
-            #invocar callback
-            pass
-        #else:
+        msg = CDProto.recv_msg(self.sock, self.ser_type)
+        if msg is not None:
+            if msg.command == "publish": 
+                return msg
+            elif msg.command == "listTopics":
+                #invocar callback
+                pass
+            #else:
 
     
     def list_topics(self, callback: Callable):
@@ -81,7 +82,7 @@ class XMLQueue(Queue):
     """Queue implementation with XML based serialization."""
     def __init__(self, topic, _type=MiddlewareType.CONSUMER):
         super().__init__(topic, _type)
-        self.ser_type = "XMLQueue"
+        self.ser_type = 1
 
         if self.type == MiddlewareType.CONSUMER:
             CDProto.send_msg(self.sock, "subscribe", self.ser_type, self.topic)
@@ -92,7 +93,7 @@ class XMLQueue(Queue):
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
-        msg = CDProto.recv_msg(self.sock)
+        msg = CDProto.recv_msg(self.sock, self.ser_type)
         if msg.command == "publish": 
             return msg
         elif msg.command == "listTopics":
@@ -116,7 +117,7 @@ class PickleQueue(Queue):
     """Queue implementation with Pickle based serialization."""
     def __init__(self, topic, _type=MiddlewareType.CONSUMER):
         super().__init__(topic, _type)
-        self.ser_type = "PickleQueue"
+        self.ser_type = 2
 
         if self.type == MiddlewareType.CONSUMER:
             CDProto.send_msg(self.sock, "subscribe", self.ser_type, self.topic)
@@ -127,7 +128,7 @@ class PickleQueue(Queue):
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
-        msg = CDProto.recv_msg(self.sock)
+        msg = CDProto.recv_msg(self.sock, self.ser_type)
         if msg.command == "publish": 
             return msg
         elif msg.command == "listTopics":
