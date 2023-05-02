@@ -117,7 +117,7 @@ class CDProto:
             raise CDProtoBadFormat(msg)
 
     @classmethod
-    def recv_msg(self, connection: socket, serializer: int) -> Message:
+    def recv_msg(self, connection: socket) -> Message:
         """Receives through a connection a Message object."""
 
         size = connection.recv(2)

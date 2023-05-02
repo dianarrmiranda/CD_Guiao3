@@ -83,11 +83,11 @@ class Broker:
                 conn.close()
 
             if serializer == Serializer.JSON:
-                msg = CDProto.recv_msg(conn, serializer.value)
+                msg = CDProto.recv_msg(conn)
             elif serializer == Serializer.XML:
-                msg = CDProto.recv_msg(conn, serializer.value)
+                msg = CDProto.recv_msg(conn)
             elif serializer == Serializer.PICKLE:
-                msg = CDProto.recv_msg(conn, serializer.value)
+                msg = CDProto.recv_msg(conn)
 
             if msg is not None:
                 command = msg["command"]
