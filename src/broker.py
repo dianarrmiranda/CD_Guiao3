@@ -62,7 +62,6 @@ class Broker:
             # Lê o header e a informação
             header = conn.recv(1)
             if header == b'':
-                #print("closed")
                 self.unsubscribe("", conn)
                 self.sel.unregister(conn)
                 conn.close()
@@ -101,14 +100,10 @@ class Broker:
                 elif command == 'publish':
 
                     message = msg["message"]
-                    #print ( "Publish message is gonna be sent to topic" , topic , "\n ")
-
                     self.put_topic(topic, message)
-                    # print("Broker published " + message + "to topic " + topic)startswith(sub_topic) or topic == sub_topic
                     for sub_topic in self.subscriptions.keys():
                         if sub_topic == msg["topic"] or sub_topic in msg["topic"]:
                             for subscriber in self.subscriptions[sub_topic]:
-                                #print ("Sending publish message to" , self.channels[subscriber[0]] , "\n" )
                                 CDProto.send_msg(
                                     subscriber[0], command, serializer.value, topic, message)
 
