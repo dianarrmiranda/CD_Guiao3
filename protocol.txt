@@ -1,4 +1,4 @@
-Tipos de mensagem
+Tipos de mensagem:
 
     Subscribe:
         É utilizada para subscrever um tópico.
@@ -20,4 +20,38 @@ Tipos de mensagem
         É utilizada para cancelar a subscrição de um tópico.
         Representação: {"type": "unsubscribe", "topic": "topic_name"}
 
-O protocolo suporta três formatos de serialização: JSON, XML e Pickle.
+
+O protocolo suporta três formatos de serialização: JSON, XML e Pickle. No envio da mensagem, 
+especificado no protocolo (protocol.py), é enviado um byte com um inteiro que identifica cada tipo.
+Além disso, são enviados dois bytes com o tamanho da mensagem, que são lidos no receção da mensagem, 
+a fim de definir o tamanho a ser lido.
+
+
+Envio da mensagem: send_msg()
+    
+    Recebe como argumentos a socket, o comando, o inteiro que representa o serializer, o tópico e a mensagem 
+    a ser enviada.
+    Através do comando, cria a mensagem com o tipo respetivo.
+    Envia: serializer (1 byte) + size (2 bytes) + msg
+
+
+Receção mensagem: conn.recv(1) e recv_msg()
+
+    conn.recv(1):
+        Antes de qualquer chamada da função "recv_msg()", é lido o primeiro byte enviado pelo socket,
+    mesmo que esse byte não seja utilizado depois. A partir dele, o broker consegue identificar qual o 
+    tipo de serialização enviado por aquele endereço, e guarda-a em um dicionário.
+
+    recv_msg():
+        Na função, o único argumento é o endereço da socket. 
+        É verificado o tamanho da mensagem, a fim de que este cause uma exceção caso seja demasiado grande.
+        A decodificação da mensagem é feita a partir de 2 estruturas try-catch.
+        Por fim, é verificado o campo "command" da mensagem a fim de retornar a mensagem correspondente em 
+        formato de dicionário.
+
+Deteção de erros:
+
+    Utilizamos da classe CDProtoBadFormat a fim de tratar de exceções geradas por mau formatação/mau 
+    utilização do protocolo. 
+
+

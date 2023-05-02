@@ -61,7 +61,6 @@ class Unsubscribe(Message):
         return {"command": self.command, "topic": self.topic}
 
 class CDProto:
-    """Computação Distribuida Protocol."""
 
     @classmethod
     def subscribe(self, topic) -> Subscribe:
@@ -151,7 +150,6 @@ class CDProto:
 
 
 class CDProtoBadFormat(Exception):
-    """Exception when source message is not CDProto."""
 
     def __init__(self, original_msg: bytes = None):
         """Store original message that triggered exception."""
