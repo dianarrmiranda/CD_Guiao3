@@ -3,7 +3,8 @@ import enum
 import json
 from typing import List, Tuple
 import selectors
-import socket, sys
+import socket
+import sys
 import signal
 from .protocol import CDProto
 
@@ -35,8 +36,8 @@ class Broker:
         self.sel.register(self.sock, selectors.EVENT_READ, self.accept)
 
         self.topics = {}
-        self.subscriptions = {} # topic -> connections (sockets)
-        self.channels = {} # conn -> serializer
+        self.subscriptions = {}  # topic -> connections (sockets)
+        self.channels = {}  # conn -> serializer
 
     def signal_handler(sig, frame):
         print('\nDone!')
@@ -45,25 +46,23 @@ class Broker:
     signal.signal(signal.SIGINT, signal_handler)
     print('Press Ctrl+C to exit...')
 
-
     def accept(self, sock, mask):
 
         # Aceita a conexão
         conn, addr = sock.accept()
         conn.setblocking(False)
- 
+
         self.sel.register(conn, selectors.EVENT_READ, self.read)
         self.channels[conn] = None
 
-
     def read(self, conn, mask):
-        
+
         if conn in self.channels:
             msg = None
             # Lê o header e a informação
             header = conn.recv(1)
             if header == b'':
-                print("closed")
+                #print("closed")
                 self.unsubscribe("", conn)
                 self.sel.unregister(conn)
                 conn.close()
@@ -102,62 +101,70 @@ class Broker:
                 elif command == 'publish':
 
                     message = msg["message"]
-                    self.put_topic(topic, message)
+                    #print ( "Publish message is gonna be sent to topic" , topic , "\n ")
 
+                    self.put_topic(topic, message)
+                    # print("Broker published " + message + "to topic " + topic)startswith(sub_topic) or topic == sub_topic
                     for sub_topic in self.subscriptions.keys():
-                        if topic.startswith(sub_topic):
+                        if sub_topic == msg["topic"] or sub_topic in msg["topic"]:
                             for subscriber in self.subscriptions[sub_topic]:
-                                CDProto.send_msg(subscriber[0], command, serializer.value, topic, message)
+                                #print ("Sending publish message to" , self.channels[subscriber[0]] , "\n" )
+                                CDProto.send_msg(
+                                    subscriber[0], command, serializer.value, topic, message)
 
                 elif command == 'listTopics':
 
                     topics = self.list_topics()
-                    CDProto.send_msg(conn, command, serializer.value, topic, topics)
-                    
+                    CDProto.send_msg(
+                        conn, command, serializer.value, topic, topics)
+
                 elif command == 'unsubscribe':
                     self.unsubscribe(topic, conn)
+            else:
+                self.unsubscribe("", conn)
+                self.sel.unregister(conn)
+                conn.close()
         else:
             self.unsubscribe("", conn)
             self.sel.unregister(conn)
             conn.close()
 
-
     def list_topics(self) -> List[str]:
         """Returns a list of strings containing all topics containing values."""
-        return [topic for topic in self.topics.keys() if self.topics[topic]]
-
+        return list(self.topics.keys())
 
     def get_topic(self, topic):
         """Returns the currently stored value in topic."""
-        return self.topics.get(topic)
-
+        if topic in self.topics.keys():
+            return self.topics[topic]
+        return 
 
     def put_topic(self, topic, value):
         """Store in topic the value."""
         self.topics[topic] = value
 
-
     def list_subscriptions(self, topic: str) -> List[Tuple[socket.socket, Serializer]]:
         """Provide list of subscribers to a given topic."""
-        return self.subscriptions.get(topic, [])
-
+        if topic in self.subscriptions.keys():
+            return self.subscriptions[topic]
+        return 
 
     def subscribe(self, topic: str, address: socket.socket, _format: Serializer = None):
         """Subscribe to topic by client in address."""
-        if address not in self.channels:
-            self.channels[address] = _format
+        self.channels[address] = _format
 
         if topic not in self.subscriptions:
-            self.subscriptions[topic] = []
-        
-        self.subscriptions[topic].append((address, _format))
+            self.subscriptions[topic] = [(address, _format)]
+        else:
+            self.subscriptions[topic].append((address, _format))
 
-        last_msg = self.get_topic(topic)
-        if last_msg:
-            serializer = self.channels[address]
-            CDProto.send_msg(address, "publish", serializer.value, topic, last_msg)
+        if topic in self.topics:
+            last_msg = self.get_topic(topic)
+            if last_msg:
+                serializer = self.channels[address]
+                CDProto.send_msg(address, "publish",
+                                 serializer.value, topic, last_msg)
 
-    
     def unsubscribe(self, topic, address):
         """Unsubscribe to topic by client in address."""
         if topic in self.subscriptions:
@@ -165,13 +172,10 @@ class Broker:
             self.subscriptions[topic].remove((address, serializer))
         elif topic == "":
             for topic, address in self.subscriptions.items():
-                for conn,ser in address:
+                for conn, ser in address:
                     self.subscriptions[topic].remove((conn, ser))
         else:
             print("Erro")
-
-            
-
 
     def run(self):
         """Run until canceled."""

@@ -100,10 +100,11 @@ class CDProto:
     
     @classmethod
     def send_msg(self, connection: socket, command, serializer: int, topic="",  message = None):
-        msg = None
+        msg = ""
         if command == "subscribe":
             msg = self.subscribe(topic)
         elif command == "publish":
+            print ("Producer " + str(serializer) + " published a message to topic " + topic + "\n")
             msg = self.publish(topic, message)
         elif command == "listTopics":
             msg = self.listTopics(message)
@@ -118,7 +119,9 @@ class CDProto:
                 msg[key] = str(msg[key])
             msg = ET.tostring(ET.Element("message", msg))
         elif serializer == 2:
+            #print ("Pickle message before being dumped", msg)
             msg = pickle.dumps(msg.dict())
+            #print ("Pickle message dumped in send", msg)
         else:
             raise CDProtoBadFormat(msg)
 
@@ -133,46 +136,51 @@ class CDProto:
     @classmethod
     def recv_msg(self, connection: socket, serializer: int) -> Message:
         """Receives through a connection a Message object."""
-        try:
-            size = connection.recv(2)
-            print('sizeb', size)
+        
 
-            size = int.from_bytes(size, byteorder="big")
+        size = connection.recv(2)
+        #print('sizeb', size.decode("utf-8"))
+
+        size = int.from_bytes(size, byteorder="big")
             
-            if size == 0:
-                return None
-            elif size >= 2**16:
-                raise CDProtoBadFormat(size)
+        if size == 0:
+            return
+        elif size >= 2**16:
+            raise CDProtoBadFormat(size)
+        
+        data = connection.recv(size)
+        #print ( "Received message with size", size, " actual message size : ", len(data))
+
+        if data:
+            #print('data', data)
+            #print("serelizer: ", serializer)
+            if serializer == 0:
+                msg = data.decode("utf-8")
+                msg = json.loads(msg)
+            elif serializer == 1:
+                msg = ET.fromstring(data)
+                msg = msg.attrib
+            elif serializer == 2:
+                #print ("Deloaded pickle message: ", data," \n")
+                #print ("pickle DATA: " , data , "\n" )
+                #data = pickle.dumps(data)
+                msg = pickle.loads(data)
+            else:
+                return
+                
+            if msg["command"] == "subscribe":
+                #if serializer == 2:
+                #    print("Received a pickle subscriber")
+                return self.subscribe(msg["topic"]).dict()
+            elif msg["command"] == "publish":
+                return self.publish(msg["topic"], msg["message"]).dict()
+            elif msg["command"] == "listTopics":
+                if msg["topics"]:
+                    return self.listTopics(msg["topics"]).dict()
+                return self.listTopics().dict()
+            elif msg["command"] == "unsubscribe":
+                return self.unsubscribe(msg["topic"]).dict()
             
-            data = connection.recv(size)
-
-            if data:
-                if serializer == 0:
-                    msg = data.decode("utf-8")
-                    msg = json.loads(msg)
-                elif serializer == 1:
-                    msg = ET.fromstring(data.decode("utf-8"))
-                    msg = msg.attrib
-                elif serializer == 2:
-                    msg = pickle.loads(data)
-                else:
-                    msg = None
-
-
-                if msg["command"] == "subscribe":
-                    return self.subscribe(msg["topic"]).dict()
-                elif msg["command"] == "publish":
-                    return self.publish(msg["topic"], msg["message"]).dict()
-                elif msg["command"] == "listTopics":
-                    if msg["topics"]:
-                        return self.listTopics(msg["topics"]).dict()
-                    return self.listTopics().dict()
-                elif msg["command"] == "unsubscribe":
-                    return self.unsubscribe(msg["topic"]).dict()
-
-        except:
-            raise CDProtoBadFormat(data)
-
 
 class CDProtoBadFormat(Exception):
     """Exception when source message is not CDProto."""

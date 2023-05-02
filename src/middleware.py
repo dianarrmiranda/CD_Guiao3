@@ -2,6 +2,7 @@
 from collections.abc import Callable
 from enum import Enum
 import json
+import pickle
 from queue import LifoQueue, Empty
 from typing import Any, Tuple
 import selectors, sys, socket
@@ -56,14 +57,16 @@ class JSONQueue(Queue):
         """Sends data to broker."""
 
         CDProto.send_msg(self.sock, "publish", self.ser_type, self.topic, value)
+        #print ("Producer (JSON)" + str(self.ser_type) + " sent " + str(value) + " to topic" + self.topic)
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
         header = self.sock.recv(1)
-        print('header', header)
+        #print('header', header)
         msg = CDProto.recv_msg(self.sock, self.ser_type)
-        print(msg)
+        #print(msg)
         if msg is not None:
+            print ("Consumer (JSON)" + str(self.ser_type) + " received " + str(msg["message"]) + " from topic" + msg["topic"])
             if msg["command"] == "publish":
                 return msg["topic"], msg["message"]
             elif msg["command"] == "listTopics":
@@ -75,7 +78,7 @@ class JSONQueue(Queue):
     def list_topics(self, callback: Callable):
         """Lists all topics available in the broker."""
         CDProto.send_msg(self.sock, "listTopics", self.ser_type, self.topic)
-        callback 
+         
         
 
     def cancel(self):
@@ -95,16 +98,21 @@ class XMLQueue(Queue):
     def push(self, value):
         """Sends data to broker."""
         CDProto.send_msg(self.sock, "publish", self.ser_type, self.topic, value)
+        print ("Producer (XML) " + str(self.ser_type) + " sent " + str(value) + " to topic" + self.topic)
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
         header = self.sock.recv(1)
         msg = CDProto.recv_msg(self.sock, self.ser_type)
-        if msg["command"] == "publish": 
-            return msg["topic"], msg["message"]
-        elif msg["command"] == "listTopics":
+        if msg:
+            print ("Consumer (XML) " + str(self.ser_type) + " received " + str(msg["message"]) + " from topic" + msg["topic"])
+            if msg["command"] == "publish": 
+                return msg["topic"], msg["message"]
+            elif msg["command"] == "listTopics":
             #invocar callback
-            pass
+                pass
+        else:
+            return
         #else:
 
     
@@ -131,12 +139,30 @@ class PickleQueue(Queue):
     def push(self, value):
         """Sends data to broker."""
         CDProto.send_msg(self.sock, "publish", self.ser_type, self.topic, value)
+        print ("Producer (Pickle) " + str(self.ser_type) + " sent " + str(value) + " to topic" + self.topic)
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
+        #print ("Pickle consumer tried to pull a message \n")
         header = self.sock.recv(1)
-        msg = CDProto.recv_msg(self.sock, self.ser_type)
-        if msg is not None:
+        #msg = CDProto.recv_msg(self.sock, self.ser_type)
+        size = self.sock.recv(2)
+        size = int.from_bytes(size, byteorder="big")
+        msg = self.sock.recv(size)
+        print("PICKLE CONSUMER PULLED MESSAGE \n" , msg , "\n")
+        try:
+            msg = pickle.loads(msg)
+        except pickle.UnpicklingError as e:
+            print(f"Error unpickling object: {str(e)}")
+        
+        
+
+        print("Pickle consumer sucessfully loaded message")
+        #print("sock: ", str(self.sock), " type: ", str(self.ser_type), "\n")
+        #print("MESSSSSAGE   ", msg, "\n")
+
+        if msg:
+            print ("Consumer  (Pickle)" + str(self.ser_type) + " received " + str(msg["message"]) + " from topic" + msg["topic"])
             if msg["command"] == "publish":
                 return msg["topic"], msg["message"]
             elif msg["command"] == "listTopics":
@@ -147,8 +173,8 @@ class PickleQueue(Queue):
     
     def list_topics(self, callback: Callable):
         """Lists all topics available in the broker."""
-        CDProto.send_msg(self.sock, "listTopics", self.ser_type, self.topic)
-        callback 
+        CDProto.send_msg(self.sock, "listTopics", self.ser_type)
+         
         
 
     def cancel(self):
