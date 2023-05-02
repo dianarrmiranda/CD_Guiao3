@@ -10,7 +10,6 @@ class Message:
     def __init__(self, command):
         self.command = command
 
-
 class Subscribe(Message):
     """Message to join a chat topic."""
 
@@ -32,9 +31,6 @@ class ListTopics(Message):
     def dict(self):
         return {"command": self.command}
 
-    def __str__(self):
-        return f'{{"command": "{self.command}"}}'
-
 
 class ListTopicsOK(Message):
     def __init__(self, command, topics):
@@ -43,10 +39,6 @@ class ListTopicsOK(Message):
 
     def dict(self):
         return {"command": self.command, "topics": self.topics}
-
-    def __str__(self):
-        return f'{{"command": "{self.command}", "topics": "{self.topics}"}}'
-
 
 class Publish(Message):
     """Message to chat with other clients."""
@@ -59,10 +51,6 @@ class Publish(Message):
     def dict(self):
         return {"command": self.command,  "topic": self.topic, "message": self.message}
 
-    def __str__(self):
-        return f'{{"command": "{self.command}",  "topic": "{self.topic}", "message": "{self.message}"}}'
-
-
 class Unsubscribe(Message):
     def __init__(self, command,  topic):
         super().__init__(command)
@@ -71,10 +59,6 @@ class Unsubscribe(Message):
 
     def dict(self):
         return {"command": self.command, "topic": self.topic}
-
-    def __str__(self):
-        return f'{{"command": "{self.command}", "topic": "{self.topic}"}}'
-
 
 class CDProto:
     """Computação Distribuida Protocol."""
@@ -107,8 +91,6 @@ class CDProto:
         if command == "subscribe":
             msg = self.subscribe(topic)
         elif command == "publish":
-            print("Producer " + str(serializer) +
-                  " published a message to topic " + topic + "\n")
             msg = self.publish(topic, message)
         elif command == "listTopics":
             msg = self.listTopics(message)

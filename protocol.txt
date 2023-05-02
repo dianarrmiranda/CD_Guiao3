@@ -1,0 +1,23 @@
+Tipos de mensagem
+
+    Subscribe:
+        É utilizada para subscrever um tópico.
+        Representação: {"type": "subscribe", "topic": "topic_name"}
+
+    ListTopics:
+        É utilizada para pedir uma lista de todos os tópicos.
+        Representação: {"type": "listTopics"}
+    
+    ListTopicsOK
+        É utilizada para enviar uma lista de todos os tópicos.
+        Representação: {"type": "listTopics", "topics": ["topic1", "topic2", ...]}
+    
+    Publish:
+        É utilizada para publicar uma mensagem num determinado tópico.
+        Representação: {"type": "publish", "topic": "topic_name", "message": "message"}
+
+    Unsubscribe:
+        É utilizada para cancelar a subscrição de um tópico.
+        Representação: {"type": "unsubscribe", "topic": "topic_name"}
+
+O protocolo suporta três formatos de serialização: JSON, XML e Pickle.

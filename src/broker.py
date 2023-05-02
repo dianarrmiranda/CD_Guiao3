@@ -1,6 +1,5 @@
 """Message Broker"""
 import enum
-import json
 from typing import List, Tuple
 import selectors
 import socket
