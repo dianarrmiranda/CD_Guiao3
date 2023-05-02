@@ -1,6 +1,7 @@
 """Middleware to communicate with PubSub Message Broker."""
 from collections.abc import Callable
 from enum import Enum
+import json
 from queue import LifoQueue, Empty
 from typing import Any, Tuple
 import selectors, sys, socket
@@ -53,17 +54,18 @@ class JSONQueue(Queue):
 
     def push(self, value):
         """Sends data to broker."""
+
         CDProto.send_msg(self.sock, "publish", self.ser_type, self.topic, value)
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
+        header = self.sock.recv(1)
         msg = CDProto.recv_msg(self.sock, self.ser_type)
         print(msg)
         if msg is not None:
-            if msg.command == "publish":
-                print(msg) 
-                return msg
-            elif msg.command == "listTopics":
+            if msg["command"] == "publish":
+                return msg["topic"], msg["message"]
+            elif msg["command"] == "listTopics":
                 #invocar callback
                 pass
             #else:
@@ -95,10 +97,11 @@ class XMLQueue(Queue):
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
+        header = self.sock.recv(1)
         msg = CDProto.recv_msg(self.sock, self.ser_type)
-        if msg.command == "publish": 
-            return msg
-        elif msg.command == "listTopics":
+        if msg["command"] == "publish": 
+            return msg["topic"], msg["message"]
+        elif msg["command"] == "listTopics":
             #invocar callback
             pass
         #else:
@@ -130,13 +133,12 @@ class PickleQueue(Queue):
         
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
+        header = self.sock.recv(1)
         msg = CDProto.recv_msg(self.sock, self.ser_type)
-        print(msg)
         if msg is not None:
-            if msg.command == "publish":
-                print(msg) 
-                return msg
-            elif msg.command == "listTopics":
+            if msg["command"] == "publish":
+                return msg["topic"], msg["message"]
+            elif msg["command"] == "listTopics":
                 #invocar callback
                 pass
             #else:

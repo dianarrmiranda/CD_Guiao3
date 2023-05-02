@@ -124,14 +124,11 @@ class CDProto:
 
         try:
             size = (len(msg)).to_bytes(2, byteorder="big")
-
-            if command == "subscribe":
-                header = serializer.to_bytes(1, byteorder="big")
-                connection.send(header + size + msg)
-            else: 
-                connection.send(size + msg)
+            header = serializer.to_bytes(1, byteorder="big")
+            connection.send(header + size + msg)
         except:
             raise CDProtoBadFormat(msg)
+        
         
     @classmethod
     def recv_msg(self, connection: socket, serializer: int) -> Message:
@@ -139,7 +136,7 @@ class CDProto:
         try:
             size = connection.recv(2)
             size = int.from_bytes(size, byteorder="big")
-
+            
             if size == 0:
                 return None
             elif size >= 2**16:

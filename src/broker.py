@@ -60,7 +60,25 @@ class Broker:
         
         if conn in self.channels:
             msg = None
-            serializer = self.channels[conn]
+            # Lê o header e a informação
+            header = conn.recv(1)
+            header = int.from_bytes(header, byteorder='big')
+
+            # Verifica qual é o tipo da mensagem através da informação recbida
+            if header == Serializer.JSON.value:
+                serializer = Serializer.JSON
+            elif header == Serializer.XML.value:
+                serializer = Serializer.XML
+            elif header == Serializer.PICKLE.value:
+                serializer = Serializer.PICKLE
+            else:
+                serializer = None
+
+            if serializer:
+                self.channels[conn] = serializer
+            else:
+                conn.close()
+
             if serializer == Serializer.JSON:
                 msg = CDProto.recv_msg(conn, serializer.value)
             elif serializer == Serializer.XML:
@@ -73,26 +91,6 @@ class Broker:
                 topic = msg["topic"]
 
                 if command == 'subscribe':
-                    # Lê o header e a informação
-                    header = conn.recv(1)
-                    header = int.from_bytes(header, byteorder='big')
-
-                    # Verifica qual é o tipo da mensagem através da informação recbida
-                    if header == Serializer.JSON.value:
-                        serializer = Serializer.JSON
-                    elif header == Serializer.XML.value:
-                        serializer = Serializer.XML
-                    elif header == Serializer.PICKLE.value:
-                        serializer = Serializer.PICKLE
-                    else:
-                        serializer = None
-
-                    if serializer:
-                        self.channels[conn] = serializer
-                        self.sel.register(conn, selectors.EVENT_READ, self.read)
-                    else:
-                        conn.close()
-
                     self.subscribe(topic, conn, serializer)
 
                 elif command == 'publish':
