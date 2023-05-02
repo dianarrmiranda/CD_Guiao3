@@ -35,7 +35,7 @@ class Broker:
         self.sel.register(self.sock, selectors.EVENT_READ, self.accept)
 
         self.topics = {}
-        self.subscriptions = {}
+        self.subscriptions = {} # topic -> connections (sockets)
         self.channels = {} # conn -> serializer
 
     def signal_handler(sig, frame):
@@ -62,6 +62,12 @@ class Broker:
             msg = None
             # Lê o header e a informação
             header = conn.recv(1)
+            if header == b'':
+                print("closed")
+                self.unsubscribe("", conn)
+                self.sel.unregister(conn)
+                conn.close()
+                return
             header = int.from_bytes(header, byteorder='big')
 
             # Verifica qual é o tipo da mensagem através da informação recbida
@@ -112,7 +118,7 @@ class Broker:
                     self.unsubscribe(topic, conn)
         else:
             self.unsubscribe("", conn)
-            self.selector.unregister(conn)
+            self.sel.unregister(conn)
             conn.close()
 
 
@@ -157,6 +163,14 @@ class Broker:
         if topic in self.subscriptions:
             serializer = self.channels.get(address)
             self.subscriptions[topic].remove((address, serializer))
+        elif topic == "":
+            for topic, address in self.subscriptions.items():
+                for conn,ser in address:
+                    self.subscriptions[topic].remove((conn, ser))
+        else:
+            print("Erro")
+
+            
 
 
     def run(self):

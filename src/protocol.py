@@ -135,6 +135,8 @@ class CDProto:
         """Receives through a connection a Message object."""
         try:
             size = connection.recv(2)
+            print('sizeb', size)
+
             size = int.from_bytes(size, byteorder="big")
             
             if size == 0:

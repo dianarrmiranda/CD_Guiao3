@@ -60,6 +60,7 @@ class JSONQueue(Queue):
     def pull(self) -> Tuple[str, Any]:
         """Receives (topic, data) from broker. Should BLOCK the consumer!"""
         header = self.sock.recv(1)
+        print('header', header)
         msg = CDProto.recv_msg(self.sock, self.ser_type)
         print(msg)
         if msg is not None:
